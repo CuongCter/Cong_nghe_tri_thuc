@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Button</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8 bg-gray-100">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Debug Prediction Button</h1>
+        
+        <form id="salaryForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Job Title:</label>
+                <select id="jobTitle" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="Data Engineer">Data Engineer</option>
+                    <option value="Data Scientist">Data Scientist</option>
+                    <option value="Data Analyst">Data Analyst</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Experience Level:</label>
+                <select id="experienceLevel" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="EN">Entry Level (EN)</option>
+                    <option value="MI">Mid Level (MI)</option>
+                    <option value="SE">Senior Level (SE)</option>
+                    <option value="EX">Executive Level (EX)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Company Location:</label>
+                <select id="companyLocation" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Company Size:</label>
+                <select id="companySize" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="S">Small (S)</option>
+                    <option value="M">Medium (M)</option>
+                    <option value="L">Large (L)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Remote Ratio: <span id="remoteValue">50</span>%</label>
+                <input type="range" id="remoteRatio" min="0" max="100" value="50" step="25" class="w-full">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Employment Type:</label>
+                <select id="employmentType" class="w-full p-3 border border-gray-300 rounded-lg">
+                    <option value="FT">Full-time (FT)</option>
+                    <option value="PT">Part-time (PT)</option>
+                    <option value="CT">Contract (CT)</option>
+                    <option value="FL">Freelance (FL)</option>
+                </select>
+            </div>
+            
+            <div class="pt-4">
+                <button type="button" onclick="testPrediction()" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                    🧪 Test Prediction
+                </button>
+            </div>
+        </form>
+        
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden mt-6 p-4 bg-blue-50 rounded-lg">
+            <div class="flex items-center justify-center">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+                <span class="text-blue-700">Loading...</span>
+            </div>
+        </div>
+        
+        <!-- Prediction Output -->
+        <div id="predictionOutput" class="hidden mt-6 p-4 bg-green-50 rounded-lg">
+            <!-- Result will be populated -->
+        </div>
+        
+        <!-- Debug Info -->
+        <div id="debugInfo" class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h3 class="font-bold mb-2">Debug Info:</h3>
+            <pre id="debugText" class="text-sm text-gray-600"></pre>
+        </div>
+    </div>
+    
+    <script>
+        // Update remote ratio display
+        document.getElementById('remoteRatio').addEventListener('input', function() {
+            document.getElementById('remoteValue').textContent = this.value;
+        });
+        
+        // Test prediction function
+        function testPrediction() {
+            console.log("🧪 Test prediction called!");
+            
+            // Show debug info
+            const debugText = document.getElementById('debugText');
+            debugText.textContent = "Function called at: " + new Date().toLocaleTimeString();
+            
+            // Test form data collection
+            try {
+                const formData = {
+                    work_year: 2024,
+                    experience_level: document.getElementById("experienceLevel")?.value || "EN",
+                    employment_type: document.getElementById("employmentType")?.value || "FT",
+                    job_title: document.getElementById("jobTitle")?.value || "Data Engineer",
+                    remote_ratio: parseInt(document.getElementById("remoteRatio")?.value || "50"),
+                    company_size: document.getElementById("companySize")?.value || "M",
+                    company_location: document.getElementById("companyLocation")?.value || "US",
+                };
+                
+                debugText.textContent += "\n\nForm Data:\n" + JSON.stringify(formData, null, 2);
+                
+                // Show loading
+                document.getElementById("loadingState").classList.remove("hidden");
+                document.getElementById("predictionOutput").classList.add("hidden");
+                
+                // Test API call
+                fetch("/api/predict", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formData),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    debugText.textContent += "\n\nAPI Response:\n" + JSON.stringify(data, null, 2);
+                    
+                    // Hide loading, show result
+                    document.getElementById("loadingState").classList.add("hidden");
+                    document.getElementById("predictionOutput").classList.remove("hidden");
+                    
+                    // Format result
+                    const output = document.getElementById("predictionOutput");
+                    output.innerHTML = `
+                        <h3 class="font-bold text-green-800 mb-2">✅ Success!</h3>
+                        <p><strong>Prediction:</strong> $${data.prediction?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Method:</strong> ${data.method || 'N/A'}</p>
+                        <p><strong>Confidence:</strong> $${data.confidence_lower?.toLocaleString() || 'N/A'} - $${data.confidence_upper?.toLocaleString() || 'N/A'}</p>
+                    `;
+                })
+                .catch(error => {
+                    debugText.textContent += "\n\nError:\n" + error.toString();
+                    
+                    // Hide loading, show error
+                    document.getElementById("loadingState").classList.add("hidden");
+                    document.getElementById("predictionOutput").classList.remove("hidden");
+                    
+                    const output = document.getElementById("predictionOutput");
+                    output.innerHTML = `
+                        <h3 class="font-bold text-red-800 mb-2">❌ Error!</h3>
+                        <p>${error.toString()}</p>
+                    `;
+                });
+                
+            } catch (error) {
+                debugText.textContent += "\n\nForm Error:\n" + error.toString();
+            }
+        }
+        
+        // Prevent form submission
+        document.getElementById("salaryForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            testPrediction();
+            return false;
+        });
+    </script>
+</body>
+</html>

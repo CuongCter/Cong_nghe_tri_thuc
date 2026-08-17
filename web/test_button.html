@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Button</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Test Prediction Button</h1>
+    
+    <form id="salaryForm" class="space-y-4">
+        <div>
+            <label>Job Title:</label>
+            <select id="jobTitle" class="border p-2 rounded">
+                <option value="Data Engineer">Data Engineer</option>
+                <option value="Data Scientist">Data Scientist</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Experience Level:</label>
+            <select id="experienceLevel" class="border p-2 rounded">
+                <option value="EN">Entry Level</option>
+                <option value="SE">Senior Level</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Company Location:</label>
+            <select id="companyLocation" class="border p-2 rounded">
+                <option value="US">United States</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Company Size:</label>
+            <select id="companySize" class="border p-2 rounded">
+                <option value="S">Small</option>
+                <option value="M">Medium</option>
+                <option value="L">Large</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Remote Ratio:</label>
+            <input type="range" id="remoteRatio" min="0" max="100" value="50" class="w-full">
+            <span id="remoteValue">50</span>%
+        </div>
+        
+        <div>
+            <label>Employment Type:</label>
+            <select id="employmentType" class="border p-2 rounded">
+                <option value="FT">Full-time</option>
+                <option value="PT">Part-time</option>
+            </select>
+        </div>
+        
+        <button type="button" onclick="handlePrediction()" class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700">
+            Test Prediction
+        </button>
+    </form>
+    
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden mt-4 p-4 bg-blue-50 rounded">
+        <div class="flex items-center">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+            <span>Loading...</span>
+        </div>
+    </div>
+    
+    <!-- Prediction Output -->
+    <div id="predictionOutput" class="hidden mt-4 p-4 bg-green-50 rounded">
+        <!-- Result will be populated -->
+    </div>
+    
+    <script src="js/script.js"></script>
+    <script>
+        // Update remote ratio display
+        document.getElementById('remoteRatio').addEventListener('input', function() {
+            document.getElementById('remoteValue').textContent = this.value;
+        });
+        
+        // Test function
+        function testFunction() {
+            console.log("Test function called!");
+            alert("Test function works!");
+        }
+    </script>
+</body>
+</html>
