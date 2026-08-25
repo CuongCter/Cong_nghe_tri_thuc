@@ -520,5 +520,468 @@ style.textContent = `
             transform: translateY(0);
         }
     }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    .rule-card { animation: slideIn 0.4s ease-out; }
 `;
 document.head.appendChild(style);
+
+// ============================================================
+// EXPERT SYSTEM - Hệ Chuyên Gia Tư Vấn Lương
+// ============================================================
+
+// Xử lý form Expert System
+async function handleExpertSystem() {
+    const loadingEl = document.getElementById('expertLoading');
+    const outputEl = document.getElementById('expertOutput');
+
+    // Lấy dữ liệu form
+    const formData = {
+        work_year: 2024,
+        experience_level: document.getElementById('ex_experienceLevel').value,
+        employment_type: document.getElementById('ex_employmentType').value,
+        job_title: document.getElementById('ex_jobTitle').value,
+        remote_ratio: parseInt(document.getElementById('ex_remoteRatio').value),
+        company_size: document.getElementById('ex_companySize').value,
+        company_location: document.getElementById('ex_companyLocation').value
+    };
+
+    // Show loading
+    loadingEl.classList.remove('hidden');
+    outputEl.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/recommend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        // Render kết quả
+        renderExpertResult(data);
+    } catch (err) {
+        console.error('Expert System error:', err);
+        outputEl.innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl mb-3"></i>
+                <p>Lỗi: ${err.message}</p>
+            </div>
+        `;
+    } finally {
+        loadingEl.classList.add('hidden');
+    }
+}
+
+// Render kết quả từ Expert System
+function renderExpertResult(data) {
+    const rec = data.recommendation || {};
+    const expl = data.explanation || {};
+    const display = data.display || {};
+    const meta = data.metadata || {};
+
+    const ml = rec.ml_prediction || {};
+    const rules = rec.rules_fired || [];
+    const drivers = rec.key_drivers || [];
+
+    // Header với tier và confidence
+    let html = `
+        <div class="space-y-6">
+            <!-- Header: Tier & Confidence -->
+            <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="px-3 py-1 bg-white text-purple-700 text-xs font-bold rounded-full">
+                        <i class="fas fa-brain mr-1"></i>EXPERT SYSTEM
+                    </span>
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-check-circle text-green-500 mr-1"></i>
+                        ${rules.length}/${meta.rules_total} luật kích hoạt
+                    </span>
+                </div>
+                <h4 class="text-2xl font-bold text-gray-900 mb-2">
+                    ${rec.tier || 'Standard Tier'}
+                </h4>
+                <div class="flex items-center text-sm text-gray-600">
+                    <i class="fas fa-chart-pie mr-2 text-purple-600"></i>
+                    Overall Confidence:
+                    <span class="ml-2 px-2 py-1 bg-white rounded-full font-bold ${(rec.overall_confidence >= 0.8) ? 'text-green-600' : (rec.overall_confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600')}">
+                        ${((rec.overall_confidence || 0) * 100).toFixed(0)}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Mức lương dự đoán -->
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 text-center">
+                <div class="text-sm text-gray-600 mb-1">Mức lương đề xuất</div>
+                <div class="text-4xl font-bold text-green-700 mb-2">
+                    $${(ml.prediction || 0).toLocaleString()}
+                </div>
+                <div class="text-sm text-gray-600">
+                    Khoảng chấp nhận được (±MAE):
+                    <span class="font-semibold text-gray-800">
+                        $${(ml.confidence_lower || 0).toLocaleString()} - $${(ml.confidence_upper || 0).toLocaleString()}
+                    </span>
+                </div>
+            </div>
+    `;
+
+    // Warnings (nếu có)
+    if (rec.warnings && rec.warnings.length > 0) {
+        html += `
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-xl">
+                <div class="font-semibold text-yellow-800 mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Cảnh báo
+                </div>
+                <ul class="text-sm text-yellow-700 space-y-1">
+                    ${rec.warnings.map(w => `<li>• ${w}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Strategy
+    if (rec.strategy) {
+        const s = rec.strategy;
+        html += `
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-xl">
+                <div class="font-semibold text-blue-800 mb-2">
+                    <i class="fas fa-bullseye mr-2"></i>Chiến lược tuyển dụng
+                </div>
+                <div class="text-sm text-blue-700 space-y-1">
+                    ${s.strategy ? `<div><strong>Chiến lược:</strong> ${s.strategy}</div>` : ''}
+                    ${s.suggested_recruitment_time ? `<div><strong>Thời gian:</strong> ${s.suggested_recruitment_time}</div>` : ''}
+                    ${s.suggested_bonus ? `<div><strong>Bonus:</strong> ${s.suggested_bonus}</div>` : ''}
+                    ${s.urgency ? `<div><strong>Khẩn cấp:</strong> ${s.urgency}</div>` : ''}
+                    ${s.benefits_to_highlight ? `<div><strong>Benefits:</strong> ${s.benefits_to_highlight.join(', ')}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    // Luật đã kích hoạt
+    if (rules.length > 0) {
+        html += `
+            <div>
+                <div class="font-bold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-gavel text-purple-600 mr-2"></i>
+                    Luật chuyên gia được kích hoạt (${rules.length})
+                </div>
+                <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+        `;
+
+        rules.forEach((rule, idx) => {
+            const cfClass = (rule.cf >= 0.85) ? 'bg-green-100 text-green-700' :
+                            (rule.cf >= 0.7) ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700';
+            const messageHtml = formatRuleMessage(rule.then);
+            html += `
+                <div class="rule-card bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-mono text-gray-500">${rule.rule_id}</span>
+                        <span class="px-2 py-0.5 text-xs font-bold rounded-full ${cfClass}">
+                            CF: ${(rule.cf * 100).toFixed(0)}%
+                        </span>
+                    </div>
+                    <div class="text-sm font-semibold text-gray-800 mb-1">${rule.description}</div>
+                    <div class="text-xs text-gray-600 mb-1">
+                        <i class="fas fa-tag mr-1"></i>${rule.category}
+                    </div>
+                    <div class="text-xs text-gray-700 mt-2 bg-gray-50 p-2 rounded">
+                        ${messageHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+    }
+
+    // Key Drivers
+    if (drivers && drivers.length > 0) {
+        html += `
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4">
+                <div class="font-bold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-chart-line text-indigo-600 mr-2"></i>Yếu tố chính
+                </div>
+                <div class="space-y-2">
+        `;
+        drivers.forEach(d => {
+            html += `
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-700"><i class="fas fa-circle text-indigo-400 text-xs mr-2"></i>${d.factor}</span>
+                    <span class="font-bold ${d.impact.startsWith('+') ? 'text-green-600' : (d.impact.startsWith('-') ? 'text-red-600' : 'text-gray-600')}">
+                        ${d.impact}
+                    </span>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // Market context
+    if (expl.market_context) {
+        const m = expl.market_context;
+        html += `
+            <div class="bg-orange-50 rounded-xl p-4">
+                <div class="font-bold text-gray-900 mb-2 flex items-center">
+                    <i class="fas fa-globe text-orange-600 mr-2"></i>So sánh thị trường
+                </div>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">vs Market Avg ($136,854):</span>
+                        <span class="font-bold ${m.vs_average.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${m.vs_average.formatted}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">vs Market Median ($133,000):</span>
+                        <span class="font-bold ${m.vs_median.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${m.vs_median.formatted}
+                        </span>
+                    </div>
+                    <div class="text-gray-700 mt-2 text-xs italic">
+                        ${m.market_summary} • ${m.percentile_estimate}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Action items
+    const actions = rec.actions || [];
+    if (actions.length > 0 || (rec.negotiation_tips && rec.negotiation_tips.length > 0)) {
+        html += `
+            <div class="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4">
+                <div class="font-bold text-gray-900 mb-2 flex items-center">
+                    <i class="fas fa-tasks text-emerald-600 mr-2"></i>Hành động đề xuất
+                </div>
+                <ul class="text-sm space-y-1 text-gray-700">
+        `;
+        actions.forEach(a => {
+            html += `<li class="flex items-start"><i class="fas fa-check text-emerald-500 mr-2 mt-1"></i><span>${a}</span></li>`;
+        });
+        if (rec.negotiation_tips) {
+            rec.negotiation_tips.forEach(t => {
+                html += `<li class="flex items-start"><i class="fas fa-comments text-blue-500 mr-2 mt-1"></i><span>${t}</span></li>`;
+            });
+        }
+        html += `</ul></div>`;
+    }
+
+    html += `</div>`;
+    document.getElementById('expertOutput').innerHTML = html;
+}
+
+// Helper: format rule then-message
+function formatRuleMessage(then) {
+    if (!then) return '';
+    const parts = [];
+    if (then.tier) parts.push(`<strong>${then.tier}</strong>`);
+    if (then.salary_range && Array.isArray(then.salary_range)) {
+        parts.push(`Khoảng: $${then.salary_range[0].toLocaleString()} - $${then.salary_range[1].toLocaleString()}`);
+    }
+    if (then.market_position) parts.push(`Vị thế: ${then.market_position}`);
+    if (then.action) parts.push(`<em>${then.action}</em>`);
+    if (then.warning) parts.push(`<span class="text-yellow-700">⚠️ ${then.warning}</span>`);
+    if (then.strategy) parts.push(`<em>${then.strategy}</em>`);
+    if (then.suggested_recruitment_time) parts.push(`⏱️ ${then.suggested_recruitment_time}`);
+    if (then.suggested_bonus) parts.push(`💰 ${then.suggested_bonus}`);
+    if (then.benefits_to_highlight) parts.push(`✨ ${then.benefits_to_highlight.join(', ')}`);
+    if (then.characteristic) parts.push(`<em>${then.characteristic}</em>`);
+    if (then.salary_adjustment) parts.push(`📊 ${then.salary_adjustment}`);
+    if (then.general_advice) parts.push(`<em>${then.general_advice}</em>`);
+    if (then.salary_negotiation_tips) parts.push(`Tips: ${then.salary_negotiation_tips.join('; ')}`);
+    return parts.join(' • ');
+}
+
+// Khởi tạo slider cho expert form
+document.addEventListener('DOMContentLoaded', function() {
+    const exSlider = document.getElementById('ex_remoteRatio');
+    const exValue = document.getElementById('ex_remoteValue');
+    if (exSlider && exValue) {
+        exSlider.addEventListener('input', function() {
+            exValue.textContent = this.value;
+        });
+    }
+
+    // Format salary input cho backward chaining form
+    const salaryInput = document.getElementById('rev_targetSalary');
+    const salaryFormatted = document.getElementById('rev_salaryFormatted');
+    if (salaryInput && salaryFormatted) {
+        salaryInput.addEventListener('input', function() {
+            const val = parseInt(this.value) || 0;
+            salaryFormatted.textContent = '$' + val.toLocaleString();
+        });
+    }
+});
+
+// ============================================================
+// BACKWARD CHAINING - Tìm vị trí theo ngân sách
+// ============================================================
+
+async function handleReverseInference() {
+    const loadingEl = document.getElementById('reverseLoading');
+    const outputEl = document.getElementById('reverseOutput');
+
+    const targetSalary = parseInt(document.getElementById('rev_targetSalary').value);
+    if (!targetSalary || targetSalary < 30000) {
+        outputEl.innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl mb-3"></i>
+                <p>Vui lòng nhập ngân sách hợp lệ (>= $30,000)</p>
+            </div>`;
+        return;
+    }
+
+    const constraints = {
+        target_salary: targetSalary,
+        company_location: document.getElementById('rev_location').value || null,
+        employment_type: document.getElementById('rev_employment').value || null,
+        remote_ratio: document.getElementById('rev_remote').value !== '' ?
+                       parseInt(document.getElementById('rev_remote').value) : null,
+        top_k: 5
+    };
+
+    loadingEl.classList.remove('hidden');
+    outputEl.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/recommend-reverse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(constraints)
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        renderReverseResults(data);
+    } catch (err) {
+        console.error('Reverse inference error:', err);
+        outputEl.innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl mb-3"></i>
+                <p>Lỗi: ${err.message}</p>
+            </div>`;
+    } finally {
+        loadingEl.classList.add('hidden');
+    }
+}
+
+function renderReverseResults(data) {
+    const r = data.recommendations || {};
+    const candidates = r.candidates || [];
+    const outputEl = document.getElementById('reverseOutput');
+
+    if (candidates.length === 0) {
+        outputEl.innerHTML = `
+            <div class="text-center py-8 text-yellow-600">
+                <i class="fas fa-search-minus text-3xl mb-3"></i>
+                <p>Không tìm thấy vị trí phù hợp trong khoảng ±20%</p>
+                <p class="text-sm mt-2">Hãy thử điều chỉnh ngân sách hoặc nới lỏng ràng buộc</p>
+            </div>`;
+        return;
+    }
+
+    const target = r.target_salary;
+    const min = r.min_salary;
+    const max = r.max_salary;
+
+    let html = `
+        <div class="space-y-4">
+            <!-- Summary -->
+            <div class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200">
+                <div class="text-xs text-gray-600 mb-1">Đã tìm thấy</div>
+                <div class="text-2xl font-bold text-yellow-700">
+                    ${r.unique_profiles} profiles
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Trong khoảng <strong>$${min.toLocaleString()} - $${max.toLocaleString()}</strong>
+                    (đánh giá ${r.evaluated} combinations)
+                </div>
+            </div>
+
+            <!-- Candidates List -->
+            <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+    `;
+
+    candidates.forEach((c, idx) => {
+        const accuracy = c.distance_from_target;
+        const accuracyClass = accuracy === 0 ? 'text-green-600' :
+                              accuracy < 5000 ? 'text-blue-600' :
+                              'text-gray-600';
+
+        html += `
+            <div class="bg-white border-2 border-gray-200 hover:border-yellow-400 rounded-xl p-4 transition-all">
+                <div class="flex items-start justify-between mb-2">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded">
+                                #${idx + 1}
+                            </span>
+                            <span class="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-bold rounded">
+                                ${c.experience_level}
+                            </span>
+                        </div>
+                        <div class="font-bold text-gray-900 mt-1">
+                            ${c.job_title}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-green-700">
+                            $${c.predicted_salary.toLocaleString()}
+                        </div>
+                        <div class="text-xs ${accuracyClass}">
+                            ${accuracy === 0 ? '✓ Chính xác' : '±' + accuracy.toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 mt-2">
+                    <div>
+                        <i class="fas fa-globe text-blue-500 mr-1"></i>
+                        ${c.company_location === 'US' ? 'United States' : 'Non-US'}
+                    </div>
+                    <div>
+                        <i class="fas fa-building text-purple-500 mr-1"></i>
+                        Company: ${c.company_size === 'S' ? 'Small' : c.company_size === 'M' ? 'Medium' : 'Large'}
+                    </div>
+                    <div>
+                        <i class="fas fa-clock text-red-500 mr-1"></i>
+                        ${c.employment_type}
+                    </div>
+                    <div>
+                        <i class="fas fa-home text-indigo-500 mr-1"></i>
+                        ${c.remote_ratio}% remote
+                    </div>
+                </div>
+                ${c.tier ? `
+                    <div class="mt-2 text-xs px-2 py-1 bg-gray-50 rounded text-gray-700">
+                        <i class="fas fa-tag text-gray-400 mr-1"></i>
+                        ${c.tier}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+            <div class="text-xs text-gray-500 text-center pt-2">
+                <i class="fas fa-info-circle mr-1"></i>
+                Kết quả dựa trên ${r.evaluated} combinations, lọc trùng lặp để đa dạng hóa
+            </div>
+        </div>
+    `;
+
+    outputEl.innerHTML = html;
+}
+
+// Expose globally
+window.handleReverseInference = handleReverseInference;
+
+// Expose globally
+window.handleExpertSystem = handleExpertSystem;
